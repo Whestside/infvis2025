@@ -8,6 +8,9 @@
 </head>
 <body>
     <h1> Assignment 1 </h1>
+    <h2>Tested vs. Non-tested powerlifting results rated > 400 Dots</h2>
+
+
     <svg width="1000" height="600"></svg>
 
     <script type="module">
@@ -16,7 +19,6 @@
       d3.json("/assignment0").then( data => {
 
         const groups = data.Tested.map(d => d ? "Tested" : "Untested");
-        console.log(groups);
         const categories = Object.keys(data).filter( n => n !== 'Tested');
 
         const series = [];
@@ -29,7 +31,7 @@
 
         // --- Setup SVG and scales ---
         const svg = d3.select("svg");
-        const margin = { top: 30, right: 20, bottom: 60, left: 60 };
+        const margin = { top: 30, right: 20, bottom: 100, left: 60 };
         const width = +svg.attr("width") - margin.left - margin.right;
         const height = +svg.attr("height") - margin.top - margin.bottom;
 
@@ -38,7 +40,7 @@
         const x0 = d3.scaleBand()
           .domain(categories)
           .range([0, width])
-          .paddingInner(0.5);
+          .paddingInner(0.2);
 
         const x1 = d3.scaleBand()
           .domain(["Tested", "Untested"])
@@ -52,7 +54,8 @@
 
         const color = d3.scaleOrdinal()
           .domain(["Tested", "Untested"])
-          .range(["#1f77b4", "#ff7f0e"]);
+          .range(["#f8766d", "#7a7a7a"]);
+
 
         // --- Draw bars ---
         const grouped = d3.group(series, s => s.category)
@@ -76,6 +79,7 @@
           .call(d3.axisBottom(x0))
           .selectAll("text")
           .attr("transform", "rotate(-30)")
+          .attr("font-size", "15px")
           .style("text-anchor", "end");
 
         g.append("g").call(d3.axisLeft(y));
@@ -103,5 +107,9 @@
       })
 
     </script>
+
+    <article style="font-size: 1.5em">
+        asöodfasodfasdfüpasjüfasjofiasjdo
+    </article>
 </body>
 </html>
