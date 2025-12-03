@@ -42,6 +42,36 @@ app.get("/assignment1", (req, res) => {
 
 });
 
+app.get("/assignment2", (req, res) => {
+  const query = `
+      select 
+          sex, 
+          ageclass,
+          equipment,
+          tested,
+          country,
+          weightclasskg, 
+          max(Best3SquatKg) As "Best Squat", 
+          max(Best3BenchKg) As "Best Bench", 
+          max(Best3DeadliftKg) AS "Best Deadlift" 
+      FROM lifts 
+      WHERE weightclasskg not like '%.%' and (weightclasskg like '%0' or weightclasskg like '%5')
+      GROUP BY CUBE (sex,
+                     ageclass,
+                     equipment,
+                     tested,
+                     country,
+                     weightclasskg);
+  `;
+
+  const result = conn.runAndReadAll(query).then(
+    (result) => {
+      res.json(result.getColumnsObject())
+    }
+  );
+
+});
+
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });

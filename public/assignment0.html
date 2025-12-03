@@ -19,6 +19,7 @@
       d3.json("/assignment0").then( data => {
 
         const groups = data.Tested.map(d => d ? "Tested" : "Untested");
+        console.log(groups);
         const categories = Object.keys(data).filter( n => n !== 'Tested');
 
         const series = [];
@@ -27,6 +28,7 @@
             series.push({ category: cat, tested: group, value: data[cat][i] });
           });
         });
+        console.log(series)
 
 
         // --- Setup SVG and scales ---
