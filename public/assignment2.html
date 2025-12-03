@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Assignment 3</title>
+    <link rel="stylesheet" href="assignment2.css">
+
+
+</head>
+<body>
+<h1> Assignment 3 </h1>
+
+<h2>Compare powerlifting records from the <a href="https://openpowerlifting.org"> openpowerlifting.org </a> dataset!</h2>
+
+<p>
+    Using this tool
+</p>
+
+<p>
+    You can filter by countries, sex, whether the record was made in a tested competition or not, and by
+    weightclasses.
+</p>
+
+<h3> Filter blue group: </h3>
+<div class="tag-selector">
+    <div class="tag-input-area">
+        <div id="selected-tags-blue"></div>
+        <input id="tag-input-blue" type="text" autocomplete="off" placeholder="Type to search tags...">
+    </div>
+
+    <ul id="suggestions-blue" class="hidden"></ul>
+</div>
+
+<h3> Filter red group: </h3>
+<div class="tag-selector">
+    <div class="tag-input-area">
+        <div id="selected-tags-red"></div>
+        <input id="tag-input-red" type="text" autocomplete="off" placeholder="Type to search tags...">
+    </div>
+
+    <ul id="suggestions-red" class="hidden"></ul>
+</div>
+
+
+
+<svg id="chart" width="1000" height="800"></svg>
+
+<script type="module">
+  import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+
+  const request = new XMLHttpRequest();
+  request.open("GET", "../resources/allrecords.json", false);
+  request.send(null)
+  const rawData = JSON.parse(request.responseText);
+
+  // Initial setup
+  function setupChart() {
+    const svg = d3.select("svg");
+    const margin = { top: 30, right: 20, bottom: 100, left: 60 };
+    const width = +svg.attr("width") - margin.left - margin.right;
+    const height = +svg.attr("height") - margin.top - margin.bottom;
+
+    const g = svg.append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // Create axis groups
+    g.append("g").attr("class", "x-axis").attr("transform", `translate(0,${height})`);
+    g.append("g").attr("class", "y-axis");
+
+    // Legend
+    const color = d3.scaleOrdinal()
+      .domain(["blue group", "red group"])
+      .range(["#7a7aff", "#ff7a7a"]);
+
+    const legend = svg.append("g")
+      .attr("transform", `translate(${width - 120},20)`);
+
+    ["blue group", "red group"].forEach((label, i) => {
+      legend.append("rect")
+        .attr("x", 0)
+        .attr("y", i * 20)
+        .attr("width", 20)
+        .attr("height", 20)
+        .attr("fill", color(label));
+      legend.append("text")
+        .attr("x", 30)
+        .attr("y", i * 20 + 10)
+        .text(label)
+        .attr("font-size", "15px")
+        .attr("dominant-baseline", "middle")
+        .attr("text-anchor", "start");
+    });
+
+    return { svg, g, width, height, margin, color };
+  }
+
+  const chart = setupChart();
+
+  const tagValueMap = new Map([
+    ["male",  ["Sex", "M"]],
+    ["female", ["Sex", "F"]],
+    ["diverse", ["Sex", "Mx"]],
+
+    ["Tested", ["Tested", true]],
+    ["Untested", ["Tested", null]],
+
+    // Countries
+    ["Estonia", ["Country", "Estonia"]],
+    ["Ireland", ["Country", "Ireland"]],
+    ["Azerbaijan", ["Country", "Azerbaijan"]],
+    ["Armenia", ["Country", "Armenia"]],
+    ["Luxembourg", ["Country", "Luxembourg"]],
+    ["Puerto Rico", ["Country", "Puerto Rico"]],
+    ["Malta", ["Country", "Malta"]],
+    ["Slovenia", ["Country", "Slovenia"]],
+    ["Hong Kong", ["Country", "Hong Kong"]],
+    ["Namibia", ["Country", "Namibia"]],
+    ["Serbia and Montenegro", ["Country", "Serbia and Montenegro"]],
+    ["Tahiti", ["Country", "Tahiti"]],
+    ["Venezuela", ["Country", "Venezuela"]],
+    ["Papua New Guinea", ["Country", "Papua New Guinea"]],
+    ["Gibraltar", ["Country", "Gibraltar"]],
+    ["Brunei", ["Country", "Brunei"]],
+    ["Cambodia", ["Country", "Cambodia"]],
+    ["USA", ["Country", "USA"]],
+    ["Romania", ["Country", "Romania"]],
+    ["Sweden", ["Country", "Sweden"]],
+    ["Singapore", ["Country", "Singapore"]],
+    ["Thailand", ["Country", "Thailand"]],
+    ["Portugal", ["Country", "Portugal"]],
+    ["Bulgaria", ["Country", "Bulgaria"]],
+    ["Albania", ["Country", "Albania"]],
+    ["Paraguay", ["Country", "Paraguay"]],
+    ["Suriname", ["Country", "Suriname"]],
+    ["Rhodesia", ["Country", "Rhodesia"]],
+    ["USSR", ["Country", "USSR"]],
+    ["Canada", ["Country", "Canada"]],
+    ["France", ["Country", "France"]],
+    ["Egypt", ["Country", "Egypt"]],
+    ["Qatar", ["Country", "Qatar"]],
+    ["China", ["Country", "China"]],
+    ["Turkey", ["Country", "Turkey"]],
+    ["Guatemala", ["Country", "Guatemala"]],
+    ["El Salvador", ["Country", "El Salvador"]],
+    ["West Germany", ["Country", "West Germany"]],
+    ["Indonesia", ["Country", "Indonesia"]],
+    ["Cayman Islands", ["Country", "Cayman Islands"]],
+    ["Belize", ["Country", "Belize"]],
+    ["Jamaica", ["Country", "Jamaica"]],
+    ["Zambia", ["Country", "Zambia"]],
+    ["Togo", ["Country", "Togo"]],
+    ["Senegal", ["Country", "Senegal"]],
+    ["Djibouti", ["Country", "Djibouti"]],
+    ["Latvia", ["Country", "Latvia"]],
+    ["UK", ["Country", "UK"]],
+    ["Uruguay", ["Country", "Uruguay"]],
+    ["Taiwan", ["Country", "Taiwan"]],
+    ["Honduras", ["Country", "Honduras"]],
+    ["Belarus", ["Country", "Belarus"]],
+    ["Kyrgyzstan", ["Country", "Kyrgyzstan"]],
+    ["Switzerland", ["Country", "Switzerland"]],
+    ["Israel", ["Country", "Israel"]],
+    ["Uzbekistan", ["Country", "Uzbekistan"]],
+    ["Colombia", ["Country", "Colombia"]],
+    ["Iceland", ["Country", "Iceland"]],
+    ["N.Ireland", ["Country", "N.Ireland"]],
+    ["Kiribati", ["Country", "Kiribati"]],
+    ["Panama", ["Country", "Panama"]],
+    ["Jordan", ["Country", "Jordan"]],
+    ["Congo", ["Country", "Congo"]],
+    ["Ethiopia", ["Country", "Ethiopia"]],
+    ["Slovakia", ["Country", "Slovakia"]],
+    ["Iran", ["Country", "Iran"]],
+    ["Argentina", ["Country", "Argentina"]],
+    ["Moldova", ["Country", "Moldova"]],
+    ["Ecuador", ["Country", "Ecuador"]],
+    ["New Zealand", ["Country", "New Zealand"]],
+    ["Norway", ["Country", "Norway"]],
+    ["US Virgin Islands", ["Country", "US Virgin Islands"]],
+    ["Yugoslavia", ["Country", "Yugoslavia"]],
+    ["Comoros", ["Country", "Comoros"]],
+    ["Philippines", ["Country", "Philippines"]],
+    ["Serbia", ["Country", "Serbia"]],
+    ["Nigeria", ["Country", "Nigeria"]],
+    ["Tuvalu", ["Country", "Tuvalu"]],
+    ["Samoa", ["Country", "Samoa"]],
+    ["Isle of Man", ["Country", "Isle of Man"]],
+    ["Cameroon", ["Country", "Cameroon"]],
+    ["Guinea", ["Country", "Guinea"]],
+    ["Wallis and Futuna", ["Country", "Wallis and Futuna"]],
+    ["Vanuatu", ["Country", "Vanuatu"]],
+    ["Cuba", ["Country", "Cuba"]],
+    ["Finland", ["Country", "Finland"]],
+    ["North Macedonia", ["Country", "North Macedonia"]],
+    ["Italy", ["Country", "Italy"]],
+    ["Poland", ["Country", "Poland"]],
+    ["Brazil", ["Country", "Brazil"]],
+    ["South Korea", ["Country", "South Korea"]],
+    ["Uganda", ["Country", "Uganda"]],
+    ["Grenada", ["Country", "Grenada"]],
+    ["Trinidad and Tobago", ["Country", "Trinidad and Tobago"]],
+    ["Algeria", ["Country", "Algeria"]],
+    ["Tunisia", ["Country", "Tunisia"]],
+    ["Libya", ["Country", "Libya"]],
+    ["Mauritania", ["Country", "Mauritania"]],
+    ["Czechoslovakia", ["Country", "Czechoslovakia"]],
+    ["Transnistria", ["Country", "Transnistria"]],
+    ["Yemen", ["Country", "Yemen"]],
+    ["Mauritius", ["Country", "Mauritius"]],
+    ["Tanzania", ["Country", "Tanzania"]],
+    ["Kenya", ["Country", "Kenya"]],
+    ["Mali", ["Country", "Mali"]],
+    ["Sudan", ["Country", "Sudan"]],
+    ["Czechia", ["Country", "Czechia"]],
+    ["Nepal", ["Country", "Nepal"]],
+    ["Aruba", ["Country", "Aruba"]],
+    ["Morocco", ["Country", "Morocco"]],
+    ["Tonga", ["Country", "Tonga"]],
+    ["Myanmar", ["Country", "Myanmar"]],
+    ["Oman", ["Country", "Oman"]],
+    ["Rwanda", ["Country", "Rwanda"]],
+    ["Hungary", ["Country", "Hungary"]],
+    ["Denmark", ["Country", "Denmark"]],
+    ["Kuwait", ["Country", "Kuwait"]],
+    ["Nicaragua", ["Country", "Nicaragua"]],
+    ["Niue", ["Country", "Niue"]],
+    ["Afghanistan", ["Country", "Afghanistan"]],
+    ["Netherlands Antilles", ["Country", "Netherlands Antilles"]],
+    ["Mongolia", ["Country", "Mongolia"]],
+    ["Kazakhstan", ["Country", "Kazakhstan"]],
+    ["Croatia", ["Country", "Croatia"]],
+    ["UAE", ["Country", "UAE"]],
+    ["South Africa", ["Country", "South Africa"]],
+    ["Bahamas", ["Country", "Bahamas"]],
+    ["Peru", ["Country", "Peru"]],
+    ["Montenegro", ["Country", "Montenegro"]],
+    ["Sri Lanka", ["Country", "Sri Lanka"]],
+    ["Nauru", ["Country", "Nauru"]],
+    ["Guyana", ["Country", "Guyana"]],
+    ["Cyprus", ["Country", "Cyprus"]],
+    ["Botswana", ["Country", "Botswana"]],
+    ["The Gambia", ["Country", "The Gambia"]],
+    ["East Timor", ["Country", "East Timor"]],
+    ["Burkina Faso", ["Country", "Burkina Faso"]],
+    ["Liberia", ["Country", "Liberia"]],
+    ["Cabo Verde", ["Country", "Cabo Verde"]],
+    ["Russia", ["Country", "Russia"]],
+    ["England", ["Country", "England"]],
+    ["Scotland", ["Country", "Scotland"]],
+    ["Belgium", ["Country", "Belgium"]],
+    ["Spain", ["Country", "Spain"]],
+    ["Netherlands", ["Country", "Netherlands"]],
+    ["Lebanon", ["Country", "Lebanon"]],
+    ["Bahrain", ["Country", "Bahrain"]],
+    ["Mexico", ["Country", "Mexico"]],
+    ["Costa Rica", ["Country", "Costa Rica"]],
+    ["Bosnia and Herzegovina", ["Country", "Bosnia and Herzegovina"]],
+    ["Japan", ["Country", "Japan"]],
+    ["New Caledonia", ["Country", "New Caledonia"]],
+    ["Bangladesh", ["Country", "Bangladesh"]],
+    ["Benin", ["Country", "Benin"]],
+    ["Lesotho", ["Country", "Lesotho"]],
+    ["Abkhazia", ["Country", "Abkhazia"]],
+    ["Chile", ["Country", "Chile"]],
+    ["Lithuania", ["Country", "Lithuania"]],
+    ["Bolivia", ["Country", "Bolivia"]],
+    ["Angola", ["Country", "Angola"]],
+    ["Fiji", ["Country", "Fiji"]],
+    ["Eswatini", ["Country", "Eswatini"]],
+    ["Laos", ["Country", "Laos"]],
+    ["Sierra Leone", ["Country", "Sierra Leone"]],
+    ["Wales", ["Country", "Wales"]],
+    ["Austria", ["Country", "Austria"]],
+    ["Zimbabwe", ["Country", "Zimbabwe"]],
+    ["Greece", ["Country", "Greece"]],
+    ["Iraq", ["Country", "Iraq"]],
+    ["American Samoa", ["Country", "American Samoa"]],
+    ["Guinea-Bissau", ["Country", "Guinea-Bissau"]],
+    ["India", ["Country", "India"]],
+    ["Ukraine", ["Country", "Ukraine"]],
+    ["NULL", ["Country", "NULL"]],
+    ["Germany", ["Country", "Germany"]],
+    ["Saudi Arabia", ["Country", "Saudi Arabia"]],
+    ["Malaysia", ["Country", "Malaysia"]],
+    ["Dominican Republic", ["Country", "Dominican Republic"]],
+    ["Ivory Coast", ["Country", "Ivory Coast"]],
+    ["Gabon", ["Country", "Gabon"]],
+    ["Tajikistan", ["Country", "Tajikistan"]],
+    ["Syria", ["Country", "Syria"]],
+    ["Georgia", ["Country", "Georgia"]],
+    ["Ghana", ["Country", "Ghana"]],
+    ["Vietnam", ["Country", "Vietnam"]],
+    ["Australia", ["Country", "Australia"]],
+    ["Niger", ["Country", "Niger"]],
+    ["Pakistan", ["Country", "Pakistan"]],
+    ["Solomon Islands", ["Country", "Solomon Islands"]],
+    ["British Virgin Islands", ["Country", "British Virgin Islands"]],
+    ["Haiti", ["Country", "Haiti"]],
+    ["Cook Islands", ["Country", "Cook Islands"]],
+    ["Palestine", ["Country", "Palestine"]],
+    ["Turkmenistan", ["Country", "Turkmenistan"]],
+    ["Central African Republic", ["Country", "Central African Republic"]],
+
+    // Weight classes
+    ["30kg weightclass", ["WeightClassKg", "30"]],
+    ["200kg weightclass", ["WeightClassKg", "200"]],
+    ["65kg weightclass", ["WeightClassKg", "65"]],
+    ["75kg weightclass", ["WeightClassKg", "75"]],
+    ["135kg weightclass", ["WeightClassKg", "135"]],
+    ["70kg weightclass", ["WeightClassKg", "70"]],
+    ["45kg weightclass", ["WeightClassKg", "45"]],
+    ["130kg weightclass", ["WeightClassKg", "130"]],
+    ["90kg weightclass", ["WeightClassKg", "90"]],
+    ["180kg weightclass", ["WeightClassKg", "180"]],
+    ["105kg weightclass", ["WeightClassKg", "105"]],
+    ["95kg weightclass", ["WeightClassKg", "95"]],
+    ["275kg weightclass", ["WeightClassKg", "275"]],
+    ["35kg weightclass", ["WeightClassKg", "35"]],
+    ["110kg weightclass", ["WeightClassKg", "110"]],
+    ["165kg weightclass", ["WeightClassKg", "165"]],
+    ["215kg weightclass", ["WeightClassKg", "215"]],
+    ["40kg weightclass", ["WeightClassKg", "40"]],
+    ["80kg weightclass", ["WeightClassKg", "80"]],
+    ["20kg weightclass", ["WeightClassKg", "20"]],
+    ["125kg weightclass", ["WeightClassKg", "125"]],
+    ["115kg weightclass", ["WeightClassKg", "115"]],
+    ["155kg weightclass", ["WeightClassKg", "155"]],
+    ["100kg weightclass", ["WeightClassKg", "100"]],
+    ["60kg weightclass", ["WeightClassKg", "60"]],
+    ["220kg weightclass", ["WeightClassKg", "220"]],
+    ["150kg weightclass", ["WeightClassKg", "150"]],
+    ["120kg weightclass", ["WeightClassKg", "120"]],
+    ["85kg weightclass", ["WeightClassKg", "85"]],
+    ["55kg weightclass", ["WeightClassKg", "55"]],
+    ["25kg weightclass", ["WeightClassKg", "25"]],
+    ["145kg weightclass", ["WeightClassKg", "145"]],
+    ["50kg weightclass", ["WeightClassKg", "50"]],
+    ["140kg weightclass", ["WeightClassKg", "140"]],
+  ]);
+
+
+  const blueInput = document.getElementById("tag-input-blue");
+  const redInput = document.getElementById("tag-input-red");
+  const suggestionsBlue = document.getElementById("suggestions-blue");
+  const suggestionsRed = document.getElementById("suggestions-red");
+  const tagsContainerBlue = document.getElementById("selected-tags-blue");
+  const tagsContainerRed = document.getElementById("selected-tags-red");
+
+  window.selectedTagsBlue = new Set(["male"]);
+  window.selectedTagsRed = new Set(["female"]);
+
+  function inputHandler(inputBox, suggestionBox, selectedTags, tagsContainer) {
+    let query = inputBox.value.toLowerCase().trim();
+
+    if (!query) {
+      suggestionBox.classList.add("hidden");
+      return;
+    }
+
+    let matches = tagValueMap.keys().filter(tag =>
+      tag.toLowerCase().startsWith(query) &&
+      !selectedTags.has(tag)
+    );
+
+    suggestionBox.innerHTML = "";
+    if (matches.length === 0) {
+      suggestionBox.classList.add("hidden");
+      return;
+    }
+
+    matches.forEach(tag => {
+      let li = document.createElement("li");
+      li.textContent = tag;
+      li.addEventListener("click", () => selectTag(tag, suggestionBox, selectedTags, inputBox, tagsContainer));
+      suggestionBox.appendChild(li);
+    });
+
+    suggestionBox.classList.remove("hidden");
+  }
+
+  function selectTag(tag, suggestionBox, selectedTags, inputBox, tagsContainer) {
+    if (selectedTags.has(tag)) return;
+
+    selectedTags.add(tag);
+    inputBox.value = "";
+    suggestionBox.classList.add("hidden");
+    inputBox.focus();
+
+    renderSelectedTags(selectedTags, inputBox, tagsContainer);
+  }
+
+  function removeTag(tag, selectedTags, inputBox, tagsContainer) {
+    if (selectedTags.has(tag)) {
+      selectedTags.delete(tag);
+    }
+    renderSelectedTags(selectedTags, inputBox, tagsContainer);
+    inputBox.focus();
+  }
+
+  function renderSelectedTags(tagList, inputBox, tagsContainer) {
+    tagsContainer.innerHTML = "";
+
+    tagList.forEach(tag => {
+      let chip = document.createElement("div");
+      chip.className = "tag-chip";
+
+      chip.innerHTML = `
+            ${tag}
+            <span data-tag="${tag}">✕</span>
+            `;
+
+      chip.querySelector("span").addEventListener("click", () => removeTag(tag, tagList, inputBox, tagsContainer));
+      tagsContainer.appendChild(chip);
+    });
+
+    handleFilterChange();
+
+
+  }
+
+  blueInput.addEventListener("input", () => inputHandler(blueInput, suggestionsBlue, window.selectedTagsBlue, tagsContainerBlue));
+  redInput.addEventListener("input", () => inputHandler(redInput, suggestionsRed, window.selectedTagsRed, tagsContainerRed));
+
+  renderSelectedTags(window.selectedTagsBlue, blueInput, tagsContainerBlue);
+  renderSelectedTags(window.selectedTagsRed, redInput, tagsContainerRed);
+
+
+  function handleFilterChange() {
+    const result = {
+      filterGroup: ["blue group", "red group"],
+      "Best Bench": [],
+      "Best Squat": [],
+      "Best Deadlift": []
+    }
+    let blueFilters = {};
+    let redFilters = {};
+    for (let tag of window.selectedTagsBlue) {
+      let filter = tagValueMap.get(tag);
+      blueFilters[filter[0]] = filter[1];
+    }
+
+    for (let tag of window.selectedTagsRed) {
+      let filter = tagValueMap.get(tag);
+      redFilters[filter[0]] = filter[1];
+    }
+
+    const blueData = rawData.filter( row => {
+      for (const [key, val] of Object.entries(blueFilters)) {
+        if (row[key] !== val) return false;
+      }
+
+
+      /*for (const key of Object.keys(row)) {
+        if (!key.startsWith("Best") && !(key in blueFilters) && row[key] !== null) return false;
+      }*/
+      return true;
+    });
+
+    const redData = rawData.filter( row => {
+      for (const [key, val] of Object.entries(redFilters)) {
+        if (row[key] !== val) return false;
+      }
+
+      /*for (const key of Object.keys(row)) {
+        if (!key.startsWith("Best") && !(key in redFilters) && row[key] !== null) return false;
+      }*/
+      return true;
+    });
+
+
+    if (blueData.length > 0) {
+      result["Best Bench"][0] = blueData.reduce((max, o) =>
+      o["Best Bench"] > max ? o["Best Bench"] : max, -Infinity);
+
+      result["Best Squat"][0] = blueData.reduce((max, o) =>
+        o["Best Squat"] > max ? o["Best Squat"] : max, -Infinity);
+
+      result["Best Deadlift"][0] = blueData.reduce((max, o) =>
+        o["Best Deadlift"] > max ? o["Best Deadlift"] : max, -Infinity);
+    } else {
+      result["Best Bench"][0] = 0;
+      result["Best Squat"][0] = 0;
+      result["Best Deadlift"][0] = 0;
+    }
+
+    if (redData.length > 0) {
+      result["Best Bench"][1] = redData.reduce((max, o) =>
+        o["Best Bench"] > max ? o["Best Bench"] : max, -Infinity);
+
+      result["Best Squat"][1] = redData.reduce((max, o) =>
+        o["Best Squat"] > max ? o["Best Squat"] : max, -Infinity);
+
+      result["Best Deadlift"][1] = redData.reduce((max, o) =>
+        o["Best Deadlift"] > max ? o["Best Deadlift"] : max, -Infinity);
+    } else {
+      result["Best Bench"][1] = 0;
+      result["Best Squat"][1] = 0;
+      result["Best Deadlift"][1] = 0;
+    }
+
+
+    updateChart(result, chart);
+  }
+
+
+  function updateChart(data, chart) {
+    const { g, width, height, color } = chart;
+
+    const groups = ["blue group", "red group"];
+    const categories = Object.keys(data).filter(key => key.startsWith("Best"));
+
+    // Transform data for grouped bar chart
+    const series = [];
+    categories.forEach(cat => {
+      groups.forEach((group, i) => {
+        series.push({ category: cat, filterGroup: group, value: data[cat][i] });
+      });
+    });
+
+    const x0 = d3.scaleBand()
+      .domain(categories)
+      .range([0, width])
+      .paddingInner(0.2);
+
+    const x1 = d3.scaleBand()
+      .domain(groups)
+      .range([0, x0.bandwidth()])
+      .padding(0.01);
+
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(series, s => s.value)]).nice()
+      .range([height, 0]);
+
+    const grouped = d3.group(series, s => s.category);
+
+    const categoryGroups = g.selectAll("g.category")
+      .data(grouped, ([cat]) => cat);
+
+    // Enter new categories
+    const categoryEnter = categoryGroups.enter()
+      .append("g")
+      .attr("class", "category")
+      .attr("transform", ([cat]) => `translate(${x0(cat)},0)`);
+
+    categoryEnter.merge(categoryGroups)
+      .transition().duration(750)
+      .attr("transform", ([cat]) => `translate(${x0(cat)},0)`);
+
+    //Bind bars
+    const bars = categoryEnter.merge(categoryGroups)
+      .selectAll("rect")
+      .data(([_, values]) => values, d => d.filterGroup);
+
+    bars.enter()
+      .append("rect")
+      .attr("x", d => x1(d.filterGroup))
+      .attr("y", y(0))
+      .attr("width", x1.bandwidth())
+      .attr("height", 0)
+      .attr("fill", d => color(d.filterGroup))
+      .append("title")
+      .text(d => d.value + " kg")
+      .merge(bars)
+      .transition().duration(750)
+      .attr("x", d => x1(d.filterGroup))
+      .attr("y", d => y(d.value))
+      .attr("width", x1.bandwidth())
+      .attr("height", d => height - y(d.value));
+
+    bars.exit().transition().duration(500).attr("y", y(0)).attr("height", 0).remove();
+
+    categoryGroups.exit().remove();
+
+    //Update axes
+    g.select(".x-axis")
+      .transition().duration(750)
+      .call(d3.axisBottom(x0))
+      .selectAll("text")
+      .attr("transform", "rotate(-30)")
+      .attr("font-size", "15px")
+      .style("text-anchor", "end");
+
+    g.select(".y-axis")
+      .transition().duration(750)
+      .call(d3.axisLeft(y));
+  }
+
+
+  handleFilterChange();
+
+
+</script>
+
+
+</body>
+</html>
